@@ -7,16 +7,67 @@
     <title>個人桌面助手</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#181825">
+    <!-- 引入霞鶩文楷字體供外觀切換使用 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-tc-webfont@1.0.0/style.css">
     <style>
+        /* 預設主題：極簡深色 */
         :root {
             --bg-color: #1e1e2e;
             --header-bg: #181825;
             --card-bg: #2a2a3c;
+            --panel-bg: #232334;
+            --border-color: #313244;
             --text-main: #cdd6f4;
             --text-muted: #a6adc8;
             --accent-blue: #89b4fa;
             --accent-green: #a6e3a1;
             --accent-yellow: #f9e2af;
+            --font-family: "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+            --base-font-size: 14px;
+            --card-padding: 10px 12px;
+            --card-gap: 8px;
+        }
+
+        /* 主題二：純淨亮白 */
+        [data-theme="light"] {
+            --bg-color: #f4f6f9;
+            --header-bg: #ffffff;
+            --card-bg: #ffffff;
+            --panel-bg: #eef1f6;
+            --border-color: #dce1e8;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --accent-blue: #2980b9;
+            --accent-green: #27ae60;
+            --accent-yellow: #d35400;
+        }
+
+        /* 主題三：賽博龐克 */
+        [data-theme="cyber"] {
+            --bg-color: #0d0e15;
+            --header-bg: #07080c;
+            --card-bg: #161824;
+            --panel-bg: #12141f;
+            --border-color: #2a2e45;
+            --text-main: #e0fbfc;
+            --text-muted: #8d99ae;
+            --accent-blue: #00f5d4;
+            --accent-green: #fee440;
+            --accent-yellow: #f15bb5;
+        }
+
+        /* 主題四：森林護眼 */
+        [data-theme="forest"] {
+            --bg-color: #1b2620;
+            --header-bg: #141d18;
+            --card-bg: #24332b;
+            --panel-bg: #1f2c25;
+            --border-color: #31443a;
+            --text-main: #e8ecea;
+            --text-muted: #9eb0a6;
+            --accent-blue: #81b29a;
+            --accent-green: #f2cc8f;
+            --accent-yellow: #e07a5f;
         }
 
         * {
@@ -26,15 +77,16 @@
         }
 
         body {
-            font-family: "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: var(--font-family);
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-size: 14px;
+            font-size: var(--base-font-size);
             line-height: 1.5;
             overflow-x: hidden;
+            transition: background-color 0.25s, color 0.25s;
         }
 
-        /* Window Controls Overlay 自訂頂部標題與拖曳區 */
+        /* 自訂頂部標題與拖曳區 */
         .titlebar {
             position: fixed;
             top: 0;
@@ -44,11 +96,12 @@
             background-color: var(--header-bg);
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 12px;
+            justify-content: flex-start;
+            gap: 8px;
+            padding: 0 10px;
             -webkit-app-region: drag;
             user-select: none;
-            border-bottom: 1px solid #313244;
+            border-bottom: 1px solid var(--border-color);
             z-index: 100;
         }
 
@@ -56,30 +109,80 @@
             font-size: 13px;
             font-weight: bold;
             color: var(--accent-blue);
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            white-space: nowrap;
+            margin-right: auto;
         }
 
         .titlebar-actions {
             -webkit-app-region: no-drag;
             display: flex;
-            gap: 6px;
+            gap: 4px;
         }
 
         .action-btn {
             background: transparent;
-            border: 1px solid #45475a;
+            border: 1px solid var(--border-color);
             color: var(--text-main);
             border-radius: 4px;
-            padding: 2px 8px;
+            padding: 2px 7px;
             font-size: 12px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .action-btn:hover {
-            background: #313244;
+            background: var(--card-bg);
+            border-color: var(--accent-blue);
+        }
+
+        /* 外觀自定義設定面板 */
+        .settings-panel {
+            display: none;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 14px;
+            font-size: 12px;
+        }
+
+        .settings-panel.open {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .setting-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-row select {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 3px 6px;
+            font-size: 12px;
+            font-family: inherit;
+            outline: none;
         }
 
         /* 主內容區 */
@@ -97,7 +200,7 @@
         }
 
         .section-title {
-            font-size: 13px;
+            font-size: calc(var(--base-font-size) - 1px);
             font-weight: bold;
             color: var(--accent-yellow);
             margin: 14px 0 8px 0;
@@ -109,9 +212,10 @@
         .card {
             background-color: var(--card-bg);
             border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 8px;
+            padding: var(--card-padding);
+            margin-bottom: var(--card-gap);
             border-left: 3px solid var(--accent-blue);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
         }
 
         .card.task {
@@ -119,19 +223,19 @@
         }
 
         .card-time {
-            font-size: 12px;
+            font-size: calc(var(--base-font-size) - 2px);
             color: var(--accent-blue);
             font-weight: bold;
         }
 
         .card-title {
-            font-size: 14px;
+            font-size: var(--base-font-size);
             font-weight: 500;
             margin-top: 2px;
         }
 
         .card-note {
-            font-size: 12px;
+            font-size: calc(var(--base-font-size) - 2px);
             color: var(--text-muted);
             margin-top: 4px;
         }
@@ -143,6 +247,7 @@
             padding: 24px 12px;
             background: var(--card-bg);
             border-radius: 8px;
+            border: 1px dashed var(--border-color);
         }
     </style>
 </head>
@@ -151,15 +256,51 @@
 
     <!-- 自訂頂部標題列 -->
     <header class="titlebar">
-        <div class="titlebar-title">📌 今日工作助手</div>
+        <div class="titlebar-title">📌 工作助手</div>
         <div class="titlebar-actions">
+            <button class="action-btn" onclick="toggleSettings()" title="自定義外觀">🎨</button>
             <button class="action-btn" onclick="resetToken()" title="重設驗證密碼">🔑</button>
-            <button class="action-btn" id="refreshBtn" onclick="fetchSchedule(true)">↻ 更新</button>
+            <button class="action-btn" id="refreshBtn" onclick="fetchSchedule(true)">↻</button>
         </div>
     </header>
 
     <!-- 主要顯示內容 -->
     <main class="container">
+        <!-- 外觀設定摺疊面板 -->
+        <section class="settings-panel" id="settingsPanel">
+            <div class="setting-row">
+                <span>🎨 配色主題</span>
+                <select id="themeSelect" onchange="updateAppearance()">
+                    <option value="dark">極簡深色 (預設)</option>
+                    <option value="light">純淨亮白</option>
+                    <option value="cyber">賽博龐克</option>
+                    <option value="forest">森林護眼</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <span>🔤 顯示字體</span>
+                <select id="fontSelect" onchange="updateAppearance()">
+                    <option value="sans">微軟正黑體</option>
+                    <option value="wenkai">霞鶩文楷</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <span>📏 文字大小</span>
+                <select id="sizeSelect" onchange="updateAppearance()">
+                    <option value="12px">精巧 (12px)</option>
+                    <option value="14px" selected>標準 (14px)</option>
+                    <option value="16px">舒適 (16px)</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <span>📐 卡片密度</span>
+                <select id="densitySelect" onchange="updateAppearance()">
+                    <option value="normal">標準間距</option>
+                    <option value="compact">緊湊小方塊</option>
+                </select>
+            </div>
+        </section>
+
         <div class="status-bar">
             <span id="statusText">正在連線取得資料...</span>
             <span id="notifyStatus"></span>
@@ -170,10 +311,9 @@
 
     <script>
         // =========================================================================
-        // 【唯一需要修改的地方】填入你部署 Google Apps Script 產生的 /exec 網址
-        // （注意：後方不要加上 ?token=...，密碼會在網頁開啟時自動詢問並記憶）
+        // 【請修改這裡】填入你部署 Google Apps Script 產生的 /exec 網址（不含 ?token=）
         // =========================================================================
-        const BASE_GAS_URL = "https://script.google.com/macros/s/你的部署ID/exec";
+        const BASE_GAS_URL = "https://script.google.com/macros/s/AKfycbwiBqKKLFztgwarC0VmxzsRVvWngk-lzqxvV2uzJCC0i70gAzVeN6Ywg9g-ksk3Jb43Ew/exec";
 
 
         // 註冊 Service Worker
@@ -181,7 +321,65 @@
             navigator.serviceWorker.register('./sw.js').catch(err => console.error('SW 註冊失敗:', err));
         }
 
-        // 取得或設定專屬驗證密碼（儲存在本機瀏覽器 localStorage）
+        // --- 外觀自定義控制邏輯 ---
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('open');
+        }
+
+        function updateAppearance() {
+            const config = {
+                theme: document.getElementById('themeSelect').value,
+                font: document.getElementById('fontSelect').value,
+                size: document.getElementById('sizeSelect').value,
+                density: document.getElementById('densitySelect').value
+            };
+            localStorage.setItem('assistant_appearance', JSON.stringify(config));
+            applyAppearance(config);
+        }
+
+        function applyAppearance(config) {
+            const root = document.documentElement;
+
+            // 1. 套用配色主題
+            if (config.theme === 'dark') {
+                root.removeAttribute('data-theme');
+            } else {
+                root.setAttribute('data-theme', config.theme);
+            }
+
+            // 2. 套用字體
+            if (config.font === 'wenkai') {
+                root.style.setProperty('--font-family', '"LXGW WenKai TC", "Microsoft JhengHei", sans-serif');
+            } else {
+                root.style.setProperty('--font-family', '"Microsoft JhengHei", -apple-system, sans-serif');
+            }
+
+            // 3. 套用字級
+            root.style.setProperty('--base-font-size', config.size);
+
+            // 4. 套用卡片密度
+            if (config.density === 'compact') {
+                root.style.setProperty('--card-padding', '6px 10px');
+                root.style.setProperty('--card-gap', '5px');
+            } else {
+                root.style.setProperty('--card-padding', '10px 12px');
+                root.style.setProperty('--card-gap', '8px');
+            }
+        }
+
+        function loadSavedAppearance() {
+            const saved = localStorage.getItem('assistant_appearance');
+            if (saved) {
+                const config = JSON.parse(saved);
+                document.getElementById('themeSelect').value = config.theme || 'dark';
+                document.getElementById('fontSelect').value = config.font || 'sans';
+                document.getElementById('sizeSelect').value = config.size || '14px';
+                document.getElementById('densitySelect').value = config.density || 'normal';
+                applyAppearance(config);
+            }
+        }
+
+        // --- 驗證與資料抓取邏輯 ---
         function getSecretToken() {
             let token = localStorage.getItem("assistant_secret_token");
             if (!token) {
@@ -193,7 +391,6 @@
             return localStorage.getItem("assistant_secret_token");
         }
 
-        // 手動重設密碼（點擊頂部 🔑 按鈕時觸發）
         function resetToken() {
             const current = localStorage.getItem("assistant_secret_token") || "";
             const newToken = prompt("請輸入新的驗證密碼：", current);
@@ -203,28 +400,25 @@
             }
         }
 
-        // 組合包含密碼的完整請求網址
         function getFullApiUrl() {
             const token = getSecretToken();
             return `${BASE_GAS_URL}?token=${encodeURIComponent(token || "")}`;
         }
 
-        // 檢查通知權限狀態
         function updateNotifyBadge() {
             const badge = document.getElementById('notifyStatus');
             if (!("Notification" in window)) return;
             if (Notification.permission === "granted") {
                 badge.textContent = "🔔 通知已開啟";
             } else {
-                badge.innerHTML = `<a href="#" style="color:#f38ba8" onclick="requestNotifyPermission()">點此開啟通知</a>`;
+                badge.innerHTML = `<a href="#" style="color:var(--accent-yellow)" onclick="requestNotifyPermission()">點此開啟通知</a>`;
             }
         }
 
         function requestNotifyPermission() {
-            Notification.requestPermission().then(() => updateNotifyPermission());
+            Notification.requestPermission().then(() => updateNotifyBadge());
         }
 
-        // 發送 Windows 系統通知
         function sendDesktopNotification(data) {
             if (!("Notification" in window) || Notification.permission !== "granted") return;
 
@@ -235,7 +429,6 @@
             });
         }
 
-        // 渲染畫面
         function renderDashboard(data) {
             const contentArea = document.getElementById('contentArea');
             document.getElementById('statusText').textContent = `更新時間：${data.updatedAt.split(' ')[1]}`;
@@ -247,7 +440,6 @@
 
             let html = '';
 
-            // 渲染日曆行程
             if (data.events.length > 0) {
                 html += `<div class="section-title">📅 今日行程 (${data.events.length})</div>`;
                 data.events.forEach(ev => {
@@ -262,13 +454,14 @@
                 });
             }
 
-            // 渲染待辦事項
             if (data.tasks.length > 0) {
                 html += `<div class="section-title">✅ 待辦工作 (${data.tasks.length})</div>`;
                 data.tasks.forEach(task => {
+                    const dueStr = task.due ? `<div class="card-time" style="color:var(--accent-green);">${task.due}</div>` : '';
                     const noteStr = task.notes ? `<div class="card-note">${task.notes}</div>` : '';
                     html += `
             <div class="card task">
+              ${dueStr}
               <div class="card-title">${task.title}</div>
               ${noteStr}
             </div>`;
@@ -278,17 +471,16 @@
             contentArea.innerHTML = html;
         }
 
-        // 抓取資料主函式
         async function fetchSchedule(isManual = false) {
             const btn = document.getElementById('refreshBtn');
             const apiUrl = getFullApiUrl();
 
             if (!localStorage.getItem("assistant_secret_token")) {
-                document.getElementById('statusText').textContent = '尚未設定密碼，請點擊右上角 🔑 輸入';
+                document.getElementById('statusText').textContent = '尚未設定密碼，請點擊 🔑 輸入';
                 return;
             }
 
-            btn.textContent = '讀取中...';
+            btn.textContent = '...';
             btn.disabled = true;
 
             try {
@@ -296,14 +488,13 @@
                 const data = await response.json();
 
                 if (data.error) {
-                    document.getElementById('statusText').textContent = `錯誤：${data.error}（請點 🔑 檢查密碼）`;
-                    document.getElementById('contentArea').innerHTML = `<div class="empty-msg">🔒 驗證未通過，請點擊上方 🔑 按鈕輸入正確的 Token 密碼。</div>`;
+                    document.getElementById('statusText').textContent = `錯誤：${data.error}`;
+                    document.getElementById('contentArea').innerHTML = `<div class="empty-msg">🔒 驗證未通過，請點擊上方 🔑 按鈕輸入正確密碼。</div>`;
                     return;
                 }
 
                 renderDashboard(data);
 
-                // 只有「當天有行程或待辦」時才觸發系統桌面通知
                 if (data.hasReminder) {
                     sendDesktopNotification(data);
                 } else if (!isManual) {
@@ -313,13 +504,14 @@
                 document.getElementById('statusText').textContent = '連線失敗，請檢查網路';
                 console.error(error);
             } finally {
-                btn.textContent = '↻ 更新';
+                btn.textContent = '↻';
                 btn.disabled = false;
             }
         }
 
         // 初始化執行
         window.addEventListener('DOMContentLoaded', () => {
+            loadSavedAppearance();
             updateNotifyBadge();
             if ("Notification" in window && Notification.permission === "default") {
                 Notification.requestPermission().then(updateNotifyBadge);
@@ -327,7 +519,6 @@
             fetchSchedule(false);
         });
 
-        // 每 30 分鐘 (1800000 毫秒) 自動檢查一次
         setInterval(() => fetchSchedule(false), 30 * 60 * 1000);
     </script>
 </body>
