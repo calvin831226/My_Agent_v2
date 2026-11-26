@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人桌面助手</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#181825">
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --header-bg: #181825;
+            --card-bg: #2a2a3c;
+            --text-main: #cdd6f4;
+            --text-muted: #a6adc8;
+            --accent-blue: #89b4fa;
+            --accent-green: #a6e3a1;
+            --accent-yellow: #f9e2af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* Window Controls Overlay 自訂頂部標題與拖曳區 */
+        .titlebar {
+            position: fixed;
+            top: 0;
+            left: env(titlebar-area-x, 0);
+            width: env(titlebar-area-width, 100%);
+            height: env(titlebar-area-height, 36px);
+            background-color: var(--header-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            -webkit-app-region: drag;
+            user-select: none;
+            border-bottom: 1px solid #313244;
+            z-index: 100;
+        }
+
+        .titlebar-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .titlebar-actions {
+            -webkit-app-region: no-drag;
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: 1px solid #45475a;
+            color: var(--text-main);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #313244;
+        }
+
+        /* 主內容區 */
+        .container {
+            margin-top: calc(env(titlebar-area-height, 36px) + 12px);
+            padding: 0 14px 20px 14px;
+        }
+
+        .status-bar {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--accent-yellow);
+            margin: 14px 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .card.task {
+            border-left-color: var(--accent-green);
+        }
+
+        .card-time {
+            font-size: 12px;
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .card-note {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .empty-msg {
+            color: var(--text-muted);
+            font-size: 13px;
+            text-align: center;
+            padding: 24px 12px;
+            background: var(--card-bg);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 自訂頂部標題列 -->
+    <header class="titlebar">
+        <div class="titlebar-title">📌 今日工作助手</div>
+        <div class="titlebar-actions">
+            <button class="action-btn" onclick="resetToken()" title="重設驗證密碼">🔑</button>
+            <button class="action-btn" id="refreshBtn" onclick="fetchSchedule(true)">↻ 更新</button>
+        </div>
+    </header>
+
+    <!-- 主要顯示內容 -->
+    <main class="container">
+        <div class="status-bar">
+            <span id="statusText">正在連線取得資料...</span>
+            <span id="notifyStatus"></span>
+        </div>
+
+        <div id="contentArea"></div>
+    </main>
+
+    <script>
+        // =========================================================================
+        // 【唯一需要修改的地方】填入你部署 Google Apps Script 產生的 /exec 網址
+        // （注意：後方不要加上 ?token=...，密碼會在網頁開啟時自動詢問並記憶）
+        // =========================================================================
+        const BASE_GAS_URL = "https://script.google.com/macros/s/你的部署ID/exec";
+
+
+        // 註冊 Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.error('SW 註冊失敗:', err));
+        }
+
+        // 取得或設定專屬驗證密碼（儲存在本機瀏覽器 localStorage）
+        function getSecretToken() {
+            let token = localStorage.getItem("assistant_secret_token");
+            if (!token) {
+                token = prompt("請輸入你的桌面助手專屬驗證密碼（僅需輸入一次）：");
+                if (token && token.trim() !== "") {
+                    localStorage.setItem("assistant_secret_token", token.trim());
+                }
+            }
+            return localStorage.getItem("assistant_secret_token");
+        }
+
+        // 手動重設密碼（點擊頂部 🔑 按鈕時觸發）
+        function resetToken() {
+            const current = localStorage.getItem("assistant_secret_token") || "";
+            const newToken = prompt("請輸入新的驗證密碼：", current);
+            if (newToken !== null && newToken.trim() !== "") {
+                localStorage.setItem("assistant_secret_token", newToken.trim());
+                fetchSchedule(true);
+            }
+        }
+
+        // 組合包含密碼的完整請求網址
+        function getFullApiUrl() {
+            const token = getSecretToken();
+            return `${BASE_GAS_URL}?token=${encodeURIComponent(token || "")}`;
+        }
+
+        // 檢查通知權限狀態
+        function updateNotifyBadge() {
+            const badge = document.getElementById('notifyStatus');
+            if (!("Notification" in window)) return;
+            if (Notification.permission === "granted") {
+                badge.textContent = "🔔 通知已開啟";
+            } else {
+                badge.innerHTML = `<a href="#" style="color:#f38ba8" onclick="requestNotifyPermission()">點此開啟通知</a>`;
+            }
+        }
+
+        function requestNotifyPermission() {
+            Notification.requestPermission().then(() => updateNotifyPermission());
+        }
+
+        // 發送 Windows 系統通知
+        function sendDesktopNotification(data) {
+            if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+            const summary = `今日有 ${data.events.length} 個行程、${data.tasks.length} 項待辦事項`;
+            new Notification("📌 今日工作提醒", {
+                body: summary,
+                icon: "https://cdn-icons-png.flaticon.com/512/2693/2693507.png"
+            });
+        }
+
+        // 渲染畫面
+        function renderDashboard(data) {
+            const contentArea = document.getElementById('contentArea');
+            document.getElementById('statusText').textContent = `更新時間：${data.updatedAt.split(' ')[1]}`;
+
+            if (!data.hasReminder) {
+                contentArea.innerHTML = `<div class="empty-msg">☕ 今日無排定行程與待辦事項<br><span style="font-size:11px;">系統每 30 分鐘自動待命檢查中</span></div>`;
+                return;
+            }
+
+            let html = '';
+
+            // 渲染日曆行程
+            if (data.events.length > 0) {
+                html += `<div class="section-title">📅 今日行程 (${data.events.length})</div>`;
+                data.events.forEach(ev => {
+                    const timeStr = ev.isAllDay ? '全天行程' : `${ev.startTime} - ${ev.endTime}`;
+                    const locStr = ev.location ? `<div class="card-note">📍 ${ev.location}</div>` : '';
+                    html += `
+            <div class="card">
+              <div class="card-time">${timeStr}</div>
+              <div class="card-title">${ev.title}</div>
+              ${locStr}
+            </div>`;
+                });
+            }
+
+            // 渲染待辦事項
+            if (data.tasks.length > 0) {
+                html += `<div class="section-title">✅ 待辦工作 (${data.tasks.length})</div>`;
+                data.tasks.forEach(task => {
+                    const noteStr = task.notes ? `<div class="card-note">${task.notes}</div>` : '';
+                    html += `
+            <div class="card task">
+              <div class="card-title">${task.title}</div>
+              ${noteStr}
+            </div>`;
+                });
+            }
+
+            contentArea.innerHTML = html;
+        }
+
+        // 抓取資料主函式
+        async function fetchSchedule(isManual = false) {
+            const btn = document.getElementById('refreshBtn');
+            const apiUrl = getFullApiUrl();
+
+            if (!localStorage.getItem("assistant_secret_token")) {
+                document.getElementById('statusText').textContent = '尚未設定密碼，請點擊右上角 🔑 輸入';
+                return;
+            }
+
+            btn.textContent = '讀取中...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('statusText').textContent = `錯誤：${data.error}（請點 🔑 檢查密碼）`;
+                    document.getElementById('contentArea').innerHTML = `<div class="empty-msg">🔒 驗證未通過，請點擊上方 🔑 按鈕輸入正確的 Token 密碼。</div>`;
+                    return;
+                }
+
+                renderDashboard(data);
+
+                // 只有「當天有行程或待辦」時才觸發系統桌面通知
+                if (data.hasReminder) {
+                    sendDesktopNotification(data);
+                } else if (!isManual) {
+                    window.close();
+                }
+            } catch (error) {
+                document.getElementById('statusText').textContent = '連線失敗，請檢查網路';
+                console.error(error);
+            } finally {
+                btn.textContent = '↻ 更新';
+                btn.disabled = false;
+            }
+        }
+
+        // 初始化執行
+        window.addEventListener('DOMContentLoaded', () => {
+            updateNotifyBadge();
+            if ("Notification" in window && Notification.permission === "default") {
+                Notification.requestPermission().then(updateNotifyBadge);
+            }
+            fetchSchedule(false);
+        });
+
+        // 每 30 分鐘 (1800000 毫秒) 自動檢查一次
+        setInterval(() => fetchSchedule(false), 30 * 60 * 1000);
+    </script>
+</body>
+
+</html>
